@@ -1,0 +1,1 @@
+export const DEEPSEEK_API_KEY = 'sk-a0a1b9dac5534f76a50a2e179e6a590a'

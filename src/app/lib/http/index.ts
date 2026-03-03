@@ -6,6 +6,7 @@ import { checkStatus } from "./helper/checkStatus";
 import { AxiosCanceler } from "./helper/axiosCancel";
 import { extractFileName } from "../utils";
 import type { GlobalContextType } from '@/app/providers';
+// import { toast } from "sonner"
 
 export interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   loading?: boolean;
@@ -29,6 +30,7 @@ const axiosCanceler = new AxiosCanceler();
 export class RequestHttp {
   service: AxiosInstance;
   private messageApi: GlobalContextType['messageApi'] | null = null;
+  // private loadingId: number | string | undefined;
   private needLoadingRequestCount = 0;
   public constructor(config: AxiosRequestConfig) {
     // instantiation
@@ -134,6 +136,7 @@ export class RequestHttp {
     } else {
       console.error('API Error:', message);
     }
+    // toast.error(message)
   }
 
   /**
@@ -143,16 +146,18 @@ export class RequestHttp {
     if (this.messageApi) {
       this.messageApi.success(message);
     }
+    // toast.success(message)
   }
 
   private startLoading = (): void => {
     if (this.messageApi) {
       this.messageApi.open({
         type: 'loading',
-        content: 'Action in progress..',
+        content: '加载中...',
         duration: 0,
       });
     }
+    // this.loadingId = toast.loading("加载中...")
   };
 
   /**
@@ -162,6 +167,9 @@ export class RequestHttp {
     if (this.messageApi) {
       this.messageApi.destroy()
     }
+    // if (this.loadingId) {
+    //   toast.dismiss(this.loadingId); // 关闭指定 toast
+    // }
   };
 
   private showFullScreenLoading(): void {

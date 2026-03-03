@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 // import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { GlobalProvider } from './providers';
+import { Toaster } from "@/components/ui/sonner"
+import { THEME_MODE } from "@/app/lib/enum/constant";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +33,15 @@ export default function RootLayout({
       >
         <GlobalProvider>{children}</GlobalProvider>
         {/* <AntdRegistry>{children}</AntdRegistry> */}
+        <Toaster
+          richColors // ✅ 启用丰富的颜色（success=绿色, error=红色）
+          position="top-center" // 位置：top-left | top-center | top-right | bottom-left | bottom-center | bottom-right
+          theme={THEME_MODE.LIGHT} // 主题：light | dark | system
+          closeButton={false} // 显示关闭按钮
+          duration={3000} // 默认持续时间（毫秒）
+          expand={true} // 是否展开显示所有 toast
+          visibleToasts={6} // 最多同时显示几个 toast
+        />
       </body>
     </html>
   );

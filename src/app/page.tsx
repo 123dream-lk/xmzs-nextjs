@@ -5,6 +5,7 @@ import { Button } from "antd";
 import { loginApi } from "@/app/lib/http/modules/login";
 import { Item } from "@/app/lib/http/interface";
 import { Button as UIButton } from "@/components/ui/button"
+import { toast } from "sonner"
 
 export default function Home() {
 	const context = useContext(GlobalContext);
@@ -30,10 +31,14 @@ export default function Home() {
 		// loginApi({name:"xmzs"})
 		// loginApi({name:"xmzs"})
 	}
+	
+	function handleUIBtn() {
+		toast.success("Hello World!");
+	}
 
 	return (
 		<div>
-			<UIButton>Click me</UIButton>
+			<UIButton onClick={handleUIBtn}>Click me</UIButton>
 			<Button onClick={handleBtn} type="primary">
 				按钮
 			</Button>
