@@ -37,7 +37,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/prod-api/:path*',
-        destination: 'http://localhost:9999/prod-api/:path*',
+        destination: process.env.API_TARGET + '/prod-api/:path*',
       },
     ];
   },
