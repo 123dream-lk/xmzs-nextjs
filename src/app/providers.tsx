@@ -1,8 +1,8 @@
 'use client'
-import { createContext } from 'react';
+import { createContext, useEffect } from 'react';
 import { message,ConfigProvider } from 'antd';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
-import http from '@/app/lib/http/index';
+import http from '@/lib/http/index';
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export interface GlobalContextType {
@@ -15,6 +15,13 @@ export function GlobalProvider({ children }: { children: React.ReactNode }) {
   
   // 初始化 httpClient 的 messageApi
   http.setMessageApi(messageApi);
+
+  // 禁用浏览器自动滚动恢复，避免硬刷新时出现先跳到顶部再跳到底部的闪烁
+  useEffect(() => {
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+  }, []);
   
   return (
     <GlobalContext.Provider value={{ messageApi }}>

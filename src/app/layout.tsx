@@ -4,7 +4,7 @@ import "./globals.css";
 // import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { GlobalProvider } from './providers';
 import { Toaster } from "@/components/ui/sonner"
-import { THEME_MODE } from "@/app/lib/enum/constant";
+import { THEME_MODE } from "@/lib/enum/constant";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

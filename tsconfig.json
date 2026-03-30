@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@public/*": ["./public/*"],
+      "@dict/*": ["./src/dictionaries/*"]
     }
   },
   "include": [

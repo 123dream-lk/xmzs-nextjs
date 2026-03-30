@@ -1,0 +1,10 @@
+# GET http://localhost:8888/api/user?id=1&name=lk HTTP/1.1
+# POST http://localhost:8888/api/user HTTP/1.1
+# Content-Type: application/json
+
+# {
+#     "id": 1,
+#     "name": "lk"
+# }
+
+GET http://localhost:8888/api/user/123 HTTP/1.1

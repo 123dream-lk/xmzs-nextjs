@@ -1,0 +1,221 @@
+/* ============================================================
+   变量 & 根容器
+   ============================================================ */
+.embla {
+	--slide-height: 30rem;
+	--slide-spacing: 1rem;
+	--slide-size: 100%;
+	--text-body: rgb(54, 49, 61);
+	--detail-medium-contrast: rgb(234, 234, 234);
+	--detail-high-contrast: rgb(192, 192, 192);
+	--text-high-contrast-rgb-value: 49, 49, 49;
+	--background-site: rgb(249, 249, 249);
+
+	max-width: 100%;
+	margin: auto;
+}
+
+/* ============================================================
+   轮播主体
+   ============================================================ */
+.embla__viewport {
+	overflow: hidden;
+}
+
+.embla__container {
+	display: flex;
+	touch-action: pan-y pinch-zoom;
+	margin-left: calc(var(--slide-spacing) * -1);
+}
+
+.embla__slide {
+	flex: 0 0 var(--slide-size);
+	min-width: 0;
+	padding-left: var(--slide-spacing);
+}
+
+.embla__slide__number {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: var(--slide-height);
+	border: 0.2rem solid var(--detail-medium-contrast);
+	border-radius: 1.8rem;
+	font-size: 4rem;
+	font-weight: 600;
+	user-select: none;
+	overflow: hidden;
+}
+
+/* ============================================================
+   控制栏
+   ============================================================ */
+.embla__controls {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	gap: 1.2rem;
+	margin-top: 1.8rem;
+}
+.embla__controls2{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 12px;
+}
+
+@media (max-width: 480px) {
+	.embla__controls {
+		grid-template-columns: 1fr;
+		.embla__play {
+			justify-self: center;
+		}
+	}
+	.embla__controls2{
+		flex-direction: column;
+	}
+}
+
+/* ============================================================
+   按钮公共重置
+   ============================================================ */
+.embla__button,
+.embla__play,
+.embla__dot {
+	-webkit-tap-highlight-color: rgba(var(--text-high-contrast-rgb-value), 0.5);
+	-webkit-appearance: none;
+	appearance: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	margin: 0;
+	background-color: transparent;
+	border: 0;
+	color: var(--text-body);
+	cursor: pointer;
+	touch-action: manipulation;
+	text-decoration: none;
+}
+
+/* ============================================================
+   箭头按钮
+   ============================================================ */
+.embla__buttons {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 0.6rem;
+	align-items: center;
+	justify-items: center;
+}
+
+.embla__button {
+	width: 3.6rem;
+	height: 3.6rem;
+	border: 0.2rem solid var(--detail-medium-contrast);
+	border-radius: 50%;
+	z-index: 1;
+}
+
+.embla__button--disabled {
+	color: var(--detail-high-contrast);
+}
+
+.embla__button__svg {
+	width: 35%;
+	height: 35%;
+}
+
+/* ============================================================
+   播放/暂停按钮
+   ============================================================ */
+.embla__play {
+	justify-self: flex-end;
+	min-height: 3.6rem;
+	min-width: 9rem;
+	padding: 0 2.4rem;
+	border: 0.2rem solid var(--detail-medium-contrast);
+	border-radius: 1.8rem;
+	font-size: 1.4rem;
+	font-weight: 700;
+}
+
+/* ============================================================
+   自动播放进度条
+   ============================================================ */
+.embla__progress {
+	position: relative;
+	justify-self: center;
+	align-self: center;
+	width: 8rem;
+	max-width: 90%;
+	height: 0.6rem;
+	background-color: var(--background-site);
+	border-radius: 1.8rem;
+	box-shadow: inset 0 0 0 0.2rem var(--detail-medium-contrast);
+	overflow: hidden;
+	transition: opacity 0.3s ease-in-out;
+}
+
+.embla__progress--hidden {
+	opacity: 0;
+}
+
+.embla__progress__bar {
+	position: absolute;
+	inset: 0 auto 0 -100%;
+	width: 100%;
+	background-color: var(--text-body);
+	animation: autoplay-progress linear 1;
+}
+
+.embla__progress--hidden .embla__progress__bar {
+	animation-play-state: paused;
+}
+
+@keyframes autoplay-progress {
+	to {
+		transform: translate3d(100%, 0, 0);
+	}
+}
+
+/* ============================================================
+   Dot 指示器
+   ============================================================ */
+.embla__dots {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	margin-right: calc((2.6rem - 1.4rem) / 2 * -1);
+}
+
+.embla__dot {
+	position: relative;
+	width: 2.6rem;
+	height: 2.6rem;
+	border-radius: 50%;
+}
+
+.embla__dot::before,
+.embla__dot::after {
+	content: "";
+	position: absolute;
+	display: flex;
+	align-items: center;
+	width: 1.4rem;
+	height: 1.4rem;
+	border-radius: 50%;
+}
+
+.embla__dot::before {
+	border: 0.2rem solid var(--detail-medium-contrast);
+}
+
+.embla__dot::after {
+	border: 0.2rem solid var(--text-body);
+	opacity: 0;
+}
+
+.embla__dot--selected::after {
+	opacity: 1;
+}

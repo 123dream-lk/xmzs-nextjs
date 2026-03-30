@@ -4,7 +4,7 @@ import type { ResultData } from "./interface";
 import { ResultEnum } from "./enums/httpEnum";
 import { checkStatus } from "./helper/checkStatus";
 import { AxiosCanceler } from "./helper/axiosCancel";
-import { extractFileName } from "../utils";
+import { extractFileName } from "../custom-utils";
 import type { GlobalContextType } from '@/app/providers';
 // import { toast } from "sonner"
 

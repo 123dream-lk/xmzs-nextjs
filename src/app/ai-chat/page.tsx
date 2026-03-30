@@ -155,7 +155,7 @@ export default function HomePage() {
 			{/* 消息区域 */}
 			<div
 				ref={scrollContainerRef}
-				className="flex-1 overflow-y-auto px-4 py-4"
+				className="flex-1 overflow-y-auto px-4 py-4 h-0"
 			>
 				<div className="max-w-4xl mx-auto space-y-4">
 					{messages.length === 0 ? (
