@@ -50,11 +50,15 @@ import {
 	usePrevNextButtons,
 } from "./EmblaCarouselArrowButtons";
 import "./embla.scss";
-import bg from "@public/website/login-bg.png";
 import Image from "next/image";
+import type { StaticImageData } from "next/image";
+
+type SlideItem = {
+	img: StaticImageData | string;
+};
 
 type PropType = {
-	slides: number[];
+	slides: SlideItem[];
 	options?: EmblaOptionsType;
 };
 
@@ -84,14 +88,15 @@ const EmblaCarousel = (props: PropType) => {
 		<div className="embla">
 			<div className="embla__viewport" ref={emblaRef}>
 				<div className="embla__container">
-					{slides.map((index) => (
+					{slides.map((slide, index) => (
 						<div className="embla__slide" key={index}>
 							<div className="embla__slide__number">
 								{/* <span>{index + 1}</span> */}
 								<Image
-									src={bg}
+									src={slide.img}
 									alt="六安市绿水云山大数据产业发展股份有限公司"
 									loading="eager"
+									style={{ width: "100%", height: "100%", objectFit: "cover" }}
 								/>
 							</div>
 						</div>

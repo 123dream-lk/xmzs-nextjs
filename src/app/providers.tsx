@@ -14,13 +14,8 @@ export function GlobalProvider({ children }: { children: React.ReactNode }) {
   const [messageApi, messageContextHolder] = message.useMessage();
   
   // 初始化 httpClient 的 messageApi
-  http.setMessageApi(messageApi);
-
-  // 禁用浏览器自动滚动恢复，避免硬刷新时出现先跳到顶部再跳到底部的闪烁
   useEffect(() => {
-    if ('scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
+    http.setMessageApi(messageApi);
   }, []);
   
   return (

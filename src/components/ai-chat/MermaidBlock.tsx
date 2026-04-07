@@ -3,12 +3,42 @@
 import { useEffect, useState, useRef, memo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import mermaid from "mermaid";
+import { Check, Copy, ZoomIn, X as XIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-// 确保仅初始化一次，避免重复调用
-let isInitialized = false;
+// ─── 类型定义 ──────────────────────────────────────────────────────────────────
 
-// 全局离屏渲染容器，避免 mermaid.render 把临时节点插入 body 导致滚动条闪烁
+type CopyStatus = "idle" | "copied";
+
+interface Point {
+	x: number;
+	y: number;
+}
+
+interface MermaidToolbarProps {
+	copyStatus: CopyStatus;
+	onCopy: () => void;
+	onZoomIn: () => void;
+}
+
+interface MermaidModalProps {
+	svgContent: string;
+	onClose: () => void;
+}
+
+// ─── Mermaid 全局初始化 ────────────────────────────────────────────────────────
+
+let isMermaidInitialized = false;
+
+// 全局离屏容器：让 mermaid.render 在屏外渲染，避免插入 body 造成滚动条闪烁
 let offscreenContainer: HTMLDivElement | null = null;
+
 function getOffscreenContainer(): HTMLDivElement {
 	if (!offscreenContainer) {
 		offscreenContainer = document.createElement("div");
@@ -19,82 +49,176 @@ function getOffscreenContainer(): HTMLDivElement {
 	return offscreenContainer;
 }
 
-// 使用 memo 包装组件，避免不必要的重渲染
-const MermaidBlock = memo(function MermaidBlock({
-	code,
-	isStreaming,
-}: {
-	code: string;
-	isStreaming?: boolean;
-}) {
-	const [svgContent, setSvgContent] = useState<string>("");
-	// 记录上一次成功渲染的代码，用于判断是否是"脏"状态（代码已更新但未渲染）
-	const [lastRenderedCode, setLastRenderedCode] = useState<string>("");
-	const [isModalOpen, setIsModalOpen] = useState(false);
-	const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+const MERMAID_CONFIG: Parameters<typeof mermaid.initialize>[0] = {
+	startOnLoad: false,
+	theme: "base",
+	securityLevel: "loose",
+	themeVariables: {
+		fontFamily: "ui-sans-serif, system-ui, sans-serif",
+		fontSize: "14px",
+		// 主节点（蓝/靛色系）
+		primaryColor: "#eef2ff",
+		primaryTextColor: "#312e81",
+		primaryBorderColor: "#6366f1",
+		// 连线颜色
+		lineColor: "#64748b",
+		// 次要节点（紫/粉色系）
+		secondaryColor: "#faf5ff",
+		secondaryTextColor: "#581c87",
+		secondaryBorderColor: "#a855f7",
+		// 第三级节点（灰/Slate 系）
+		tertiaryColor: "#f8fafc",
+		tertiaryBorderColor: "#94a3b8",
+		// 备注（Amber 系）
+		noteBkgColor: "#fffbeb",
+		noteTextColor: "#92400e",
+		noteBorderColor: "#f59e0b",
+	},
+	flowchart: {
+		curve: "basis",
+		htmlLabels: true,
+	},
+};
 
-	// 缩放 & 平移状态
+// ─── 复制按钮（可复用）────────────────────────────────────────────────────────
+
+function CopyButton({
+	copyStatus,
+	onClick,
+	variant = "toolbar",
+}: {
+	copyStatus: CopyStatus;
+	onClick: () => void;
+	/** toolbar: 工具栏样式；source: 源码面板内悬浮样式 */
+	variant?: "toolbar" | "source";
+}) {
+	const isCopied = copyStatus === "copied";
+	const baseClass =
+		"flex items-center gap-1 px-2 py-1 rounded text-xs transition-all";
+	const variantClass =
+		variant === "toolbar"
+			? "text-gray-400 hover:text-gray-700 hover:bg-gray-200"
+			: "bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 hover:border-gray-500";
+
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			aria-label={isCopied ? "已复制" : "复制代码"}
+			className={`${baseClass} ${variantClass}`}
+		>
+			{isCopied ? (
+				<>
+					<Check className="w-3.5 h-3.5 text-green-500" />
+					<span className="text-green-500">已复制</span>
+				</>
+			) : (
+				<>
+					<Copy className="w-3.5 h-3.5" />
+					<span>复制</span>
+				</>
+			)}
+		</button>
+	);
+}
+
+// ─── 工具栏（Tab 标题栏右侧：复制 + 放大）────────────────────────────────────
+
+function MermaidToolbar({ copyStatus, onCopy, onZoomIn }: MermaidToolbarProps) {
+	return (
+		<div className="flex items-center gap-1">
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<CopyButton copyStatus={copyStatus} onClick={onCopy} />
+				</TooltipTrigger>
+				<TooltipContent side="top" className="text-xs">
+					复制 Mermaid 源码
+				</TooltipContent>
+			</Tooltip>
+
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<button
+						type="button"
+						onClick={onZoomIn}
+						aria-label="放大查看"
+						className="flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-all"
+					>
+						<ZoomIn className="w-3.5 h-3.5" />
+						<span>放大</span>
+					</button>
+				</TooltipTrigger>
+				<TooltipContent side="top" className="text-xs">
+					全屏查看图表
+				</TooltipContent>
+			</Tooltip>
+		</div>
+	);
+}
+
+// ─── 全屏弹窗（支持滚轮缩放 + 拖拽平移 + 双击重置）──────────────────────────
+
+function MermaidModal({ svgContent, onClose }: MermaidModalProps) {
 	const [scale, setScale] = useState(1);
-	const [translate, setTranslate] = useState({ x: 0, y: 0 });
+	const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 });
 	const [isDragging, setIsDragging] = useState(false);
+
+	// 用 ref 存储拖拽中间状态，避免闭包捕获问题
 	const isDraggingRef = useRef(false);
-	const dragStartRef = useRef({ x: 0, y: 0 });
-	const translateRef = useRef({ x: 0, y: 0 });
+	const dragStartRef = useRef<Point>({ x: 0, y: 0 });
+	const translateRef = useRef<Point>({ x: 0, y: 0 });
 	const canvasRef = useRef<HTMLDivElement>(null);
 
-	const openModal = useCallback(() => {
-		setScale(1);
-		setTranslate({ x: 0, y: 0 });
-		translateRef.current = { x: 0, y: 0 };
-		setIsModalOpen(true);
-	}, []);
-	const closeModal = useCallback(() => setIsModalOpen(false), []);
-
-	// 按 Esc 关闭弹窗
+	// Esc 关闭
 	useEffect(() => {
-		if (!isModalOpen) return;
 		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") closeModal();
+			if (e.key === "Escape") onClose();
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [isModalOpen, closeModal]);
+	}, [onClose]);
 
-	// 滚轮缩放 —— 用原生事件绑定（passive: false）才能调用 preventDefault()
-	// React 合成事件的 onWheel 在现代浏览器中默认是 passive 的，无法阻止默认行为
+	// 滚轮缩放（需 passive:false 才能 preventDefault）
 	useEffect(() => {
 		const canvas = canvasRef.current;
-		if (!canvas || !isModalOpen) return;
+		if (!canvas) return;
+
+		const ZOOM_SPEED = 0.001;
+		const MIN_SCALE = 0.2;
+		const MAX_SCALE = 10;
+
 		const handleWheel = (e: WheelEvent) => {
 			e.preventDefault();
 			e.stopPropagation();
-			const ZOOM_SPEED = 0.001;
-			const MIN_SCALE = 0.2;
-			const MAX_SCALE = 10;
 			setScale((prev) => {
-				const delta = -e.deltaY * ZOOM_SPEED;
-				return Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * (1 + delta)));
+				const factor = 1 + -e.deltaY * ZOOM_SPEED;
+				return Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * factor));
 			});
 		};
+
 		canvas.addEventListener("wheel", handleWheel, { passive: false });
 		return () => canvas.removeEventListener("wheel", handleWheel);
-	}, [isModalOpen]);
+	}, []);
 
-	// 拖拽平移
 	const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
 		if (e.button !== 0) return;
 		isDraggingRef.current = true;
 		setIsDragging(true);
-		dragStartRef.current = { x: e.clientX - translateRef.current.x, y: e.clientY - translateRef.current.y };
+		dragStartRef.current = {
+			x: e.clientX - translateRef.current.x,
+			y: e.clientY - translateRef.current.y,
+		};
 		e.currentTarget.style.cursor = "grabbing";
 	}, []);
 
 	const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
 		if (!isDraggingRef.current) return;
-		const newX = e.clientX - dragStartRef.current.x;
-		const newY = e.clientY - dragStartRef.current.y;
-		translateRef.current = { x: newX, y: newY };
-		setTranslate({ x: newX, y: newY });
+		const next: Point = {
+			x: e.clientX - dragStartRef.current.x,
+			y: e.clientY - dragStartRef.current.y,
+		};
+		translateRef.current = next;
+		setTranslate(next);
 	}, []);
 
 	const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -103,193 +227,234 @@ const MermaidBlock = memo(function MermaidBlock({
 		e.currentTarget.style.cursor = "grab";
 	}, []);
 
-	// 双击重置缩放和位置
+	// 双击重置缩放与位置
 	const handleDoubleClick = useCallback(() => {
 		setScale(1);
-		setTranslate({ x: 0, y: 0 });
-		translateRef.current = { x: 0, y: 0 };
+		const origin: Point = { x: 0, y: 0 };
+		setTranslate(origin);
+		translateRef.current = origin;
 	}, []);
 
-	// 如果代码发生了变化，但还没有渲染成功，说明处于"脏"状态
-	// 在这种状态下，我们应该显示源码，而不是旧的 SVG
-	const isDirty = code !== lastRenderedCode;
+	return createPortal(
+		<div
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+			onClick={onClose}
+		>
+			<div
+				className="relative bg-white rounded-xl shadow-2xl"
+				style={{ width: "90vw", height: "90vh" }}
+				onClick={(e) => e.stopPropagation()}
+			>
+				{/* 关闭按钮 */}
+				<button
+					type="button"
+					onClick={onClose}
+					title="关闭"
+					className="absolute top-3 right-3 z-20 p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+				>
+					<XIcon className="w-5 h-5" />
+				</button>
 
+				{/* 操作提示 */}
+				<p className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 text-xs text-gray-400 select-none pointer-events-none">
+					滚轮缩放 · 拖拽移动 · 双击空白区域重置
+				</p>
+
+				{/* 可交互画布 */}
+				<div
+					ref={canvasRef}
+					className="w-full h-full overflow-hidden rounded-xl"
+					style={{ cursor: "grab" }}
+					onMouseDown={handleMouseDown}
+					onMouseMove={handleMouseMove}
+					onMouseUp={handleMouseUp}
+					onMouseLeave={handleMouseUp}
+					onDoubleClick={handleDoubleClick}
+				>
+					<div
+						className="w-full h-full flex items-center justify-center"
+						style={{
+							transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+							transformOrigin: "center center",
+							transition: isDragging ? "none" : "transform 0.05s ease-out",
+							userSelect: "none",
+						}}
+						dangerouslySetInnerHTML={{ __html: svgContent }}
+					/>
+				</div>
+			</div>
+		</div>,
+		document.body
+	);
+}
+
+// ─── 加载中占位（流式输出 / 渲染失败时显示源码）──────────────────────────────
+
+function MermaidSourceFallback({
+	code,
+	isStreaming,
+}: {
+	code: string;
+	isStreaming?: boolean;
+}) {
+	return (
+		<div className="my-4 bg-gray-50 rounded-md border border-gray-200 overflow-hidden">
+			<div className="flex items-center justify-between px-3 py-1 bg-gray-100 border-b border-gray-200 text-xs text-gray-500">
+				<span>Mermaid</span>
+				<span>{isStreaming ? "Generating..." : "Source"}</span>
+			</div>
+			<pre className="p-3 text-sm font-mono overflow-auto whitespace-pre">
+				{code}
+			</pre>
+		</div>
+	);
+}
+
+// ─── 主组件 ───────────────────────────────────────────────────────────────────
+
+const MermaidBlock = memo(function MermaidBlock({
+	code,
+	isStreaming,
+}: {
+	code: string;
+	isStreaming?: boolean;
+}) {
+	const [svgContent, setSvgContent] = useState("");
+	// 记录上一次成功渲染的代码，用于判断当前是否为"脏"状态（代码已更新但尚未渲染）
+	const [lastRenderedCode, setLastRenderedCode] = useState("");
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+
+	const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// ── 初始化 mermaid（全局只执行一次）
 	useEffect(() => {
-		if (!isInitialized) {
-			mermaid.initialize({
-				startOnLoad: false,
-				theme: "base",
-				securityLevel: "loose",
-				themeVariables: {
-					fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-					fontSize: '14px',
-					
-					// 主节点样式 (蓝/靛色系)
-					primaryColor: '#eef2ff',      // indigo-50
-					primaryTextColor: '#312e81',  // indigo-900
-					primaryBorderColor: '#6366f1',// indigo-500
-					
-					// 线条颜色
-					lineColor: '#64748b',         // slate-500
-					
-					// 次要节点 (紫/粉色系)
-					secondaryColor: '#faf5ff',    // purple-50
-					secondaryTextColor: '#581c87', // purple-900
-					secondaryBorderColor: '#a855f7', // purple-500
-					
-					// 第三级节点 (灰/Slate系)
-					tertiaryColor: '#f8fafc',     // slate-50
-					tertiaryBorderColor: '#94a3b8', // slate-400
-					
-					// 备注颜色 (Amber系)
-					noteBkgColor: '#fffbeb',      // amber-50
-					noteTextColor: '#92400e',     // amber-800
-					noteBorderColor: '#f59e0b',   // amber-500
-				},
-				flowchart: {
-					curve: 'basis', // 更圆滑的连接线
-					htmlLabels: true,
-				}
-			});
-			isInitialized = true;
-		}
+		if (isMermaidInitialized) return;
+		mermaid.initialize(MERMAID_CONFIG);
+		isMermaidInitialized = true;
 	}, []);
 
+	// ── 防抖渲染：流式输出时 300ms，渲染完成后 50ms
 	useEffect(() => {
 		let isMounted = true;
-		
-		// 清除之前的定时器，防抖
-		if (renderTimeoutRef.current) {
-			clearTimeout(renderTimeoutRef.current);
-		}
-
-		// 延迟执行渲染
-		// 如果正在流式输出，给更长的防抖时间，避免频繁尝试渲染导致性能问题
-		// 如果不是流式输出（已经结束），可以立即或短延时渲染
 		const debounceTime = isStreaming ? 300 : 50;
 
-		renderTimeoutRef.current = setTimeout(async () => {
-			if (!code || typeof code !== "string" || !code.trim()) {
-				return;
-			}
+		if (renderTimeoutRef.current) clearTimeout(renderTimeoutRef.current);
 
-			// 如果代码没有变化（已经渲染过），则跳过
-			if (code === lastRenderedCode) {
-				return;
-			}
+		renderTimeoutRef.current = setTimeout(async () => {
+			if (!code?.trim() || code === lastRenderedCode) return;
 
 			try {
 				const id = `mermaid-${Math.random().toString(36).substring(2, 11)}`;
 				const { svg } = await mermaid.render(id, code, getOffscreenContainer());
-				
 				if (isMounted) {
 					setSvgContent(svg);
-					setLastRenderedCode(code); // 标记当前 code 已成功渲染
+					setLastRenderedCode(code);
 				}
-			} catch (err) {
-				// 渲染失败通常是因为代码不完整（流式输出中）
-				// 这种情况下不输出错误日志，避免控制台刷屏，只是保持显示源码
-				if (isMounted) {
-					// 渲染失败时，不更新 lastRenderedCode，保持 isDirty 为 true
-					// 也不清空 svgContent，防止闪烁？不，应该清空，因为旧的 SVG 可能不匹配
-					// 但如果是流式输出中，我们希望显示源码，所以 isDirty 为 true 已经足够控制显示源码了
-				}
+			} catch {
+				// 渲染失败通常是流式输出代码不完整，静默处理，显示源码 fallback
 			}
-		}, debounceTime); 
+		}, debounceTime);
 
 		return () => {
 			isMounted = false;
-			if (renderTimeoutRef.current) {
-				clearTimeout(renderTimeoutRef.current);
-			}
+			if (renderTimeoutRef.current) clearTimeout(renderTimeoutRef.current);
 		};
 	}, [code, isStreaming, lastRenderedCode]);
 
-	// 显示逻辑：
-	// 1. 如果正在流式输出且代码已变更（isDirty），显示源码（带 Generating...）
-	// 2. 如果 SVG 内容为空（渲染失败或初始状态），显示源码
-	// 3. 其他情况（渲染成功且代码未变更），显示 SVG
+	// ── 清理复制定时器
+	useEffect(
+		() => () => {
+			if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+		},
+		[]
+	);
+
+	const handleCopy = useCallback(() => {
+		navigator.clipboard.writeText(code).then(() => {
+			setCopyStatus("copied");
+			if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+			copyTimerRef.current = setTimeout(() => setCopyStatus("idle"), 2000);
+		});
+	}, [code]);
+
+	const openModal = useCallback(() => setIsModalOpen(true), []);
+	const closeModal = useCallback(() => setIsModalOpen(false), []);
+
+	// 代码已变更但尚未完成渲染时，视为"脏"状态，显示源码占位
+	const isDirty = code !== lastRenderedCode;
+
 	if (isDirty || !svgContent) {
-		return (
-			<div className="my-4 bg-gray-50 rounded-md border border-gray-200 overflow-hidden">
-				<div className="flex items-center justify-between px-3 py-1 bg-gray-100 border-b border-gray-200 text-xs text-gray-500">
-					<span>Mermaid</span>
-					{isStreaming ? <span>Generating...</span> : <span>Source</span>}
-				</div>
-				<pre className="p-3 text-sm font-mono overflow-auto whitespace-pre">
-					{code}
-				</pre>
-			</div>
-		);
+		return <MermaidSourceFallback code={code} isStreaming={isStreaming} />;
 	}
 
 	return (
 		<>
-			{/* 图表预览区 */}
-			<div className="relative group mermaid-diagram flex justify-center py-4 overflow-x-auto bg-white rounded-lg border border-gray-100 shadow-sm my-4">
-				{/* 放大查看按钮 */}
-				<button
-					onClick={openModal}
-					title="放大查看"
-					className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-white/80 border border-gray-200 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-700 hover:bg-white hover:border-gray-300 transition-all shadow-sm"
+			<TooltipProvider delayDuration={300}>
+				<Tabs
+					defaultValue="preview"
+					className="gap-y-0 my-4 rounded-lg border border-gray-200 shadow-sm overflow-hidden"
 				>
-					<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-						<path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-					</svg>
-				</button>
-				<div dangerouslySetInnerHTML={{ __html: svgContent }} />
-			</div>
+					{/* Tab 标题栏 */}
+					<div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200">
+						<TabsList className="h-7 bg-gray-100 p-0.5 gap-0.5">
+							<TabsTrigger
+								value="preview"
+								className="h-6 px-3 text-xs data-[state=active]:bg-white data-[state=active]:text-gray-800 data-[state=active]:shadow-sm text-gray-500"
+							>
+								预览
+							</TabsTrigger>
+							<TabsTrigger
+								value="source"
+								className="h-6 px-3 text-xs data-[state=active]:bg-white data-[state=active]:text-gray-800 data-[state=active]:shadow-sm text-gray-500"
+							>
+								源码
+							</TabsTrigger>
+						</TabsList>
 
-			{/* 全屏弹窗 Modal */}
-			{isModalOpen && typeof document !== "undefined" && createPortal(
-				<div
-					className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-					onClick={closeModal}
-				>
-					<div
-						className="relative bg-white rounded-xl shadow-2xl"
-						style={{ width: "90vw", height: "90vh" }}
-						onClick={(e) => e.stopPropagation()}
-					>
-						{/* 关闭按钮 */}
-						<button
-							onClick={closeModal}
-							title="关闭"
-							className="absolute top-3 right-3 z-20 p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-						>
-							<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-							</svg>
-						</button>
-						{/* 提示文字 */}
-						<div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 text-xs text-gray-400 select-none pointer-events-none">
-							滚轮缩放 · 拖拽移动 · 双击空白区域重置
-						</div>
-						{/* 缩放/平移画布 */}
-						<div
-							ref={canvasRef}
-							className="w-full h-full overflow-hidden rounded-xl"
-							style={{ cursor: "grab" }}
-							onMouseDown={handleMouseDown}
-							onMouseMove={handleMouseMove}
-							onMouseUp={handleMouseUp}
-							onMouseLeave={handleMouseUp}
-							onDoubleClick={handleDoubleClick}
-						>
-							<div
-								className="mermaid-diagram-modal w-full h-full flex items-center justify-center"
-								style={{
-									transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-									transformOrigin: "center center",
-									transition: isDragging ? "none" : "transform 0.05s ease-out",
-									userSelect: "none",
-								}}
-								dangerouslySetInnerHTML={{ __html: svgContent }}
-							/>
-						</div>
+						<MermaidToolbar
+							copyStatus={copyStatus}
+							onCopy={handleCopy}
+							onZoomIn={openModal}
+						/>
 					</div>
-				</div>,
-				document.body
+
+					{/* 图表预览 Tab */}
+					<TabsContent
+						value="preview"
+						className="mt-0 focus-visible:ring-0 focus-visible:outline-none"
+					>
+						<div className="flex justify-center py-4 overflow-x-auto bg-white">
+							<div dangerouslySetInnerHTML={{ __html: svgContent }} />
+						</div>
+					</TabsContent>
+
+					{/* 源码 Tab */}
+					<TabsContent
+						value="source"
+						className="mt-0 focus-visible:ring-0 focus-visible:outline-none"
+					>
+						<div className="relative bg-gray-950 rounded-b-lg">
+							{/* 悬浮复制按钮 */}
+							<div className="absolute top-2 right-2 z-10">
+								<CopyButton
+									copyStatus={copyStatus}
+									onClick={handleCopy}
+									variant="source"
+								/>
+							</div>
+							<pre className="my-0! p-4 pt-8 text-sm font-mono text-gray-200 overflow-x-auto whitespace-pre leading-relaxed">
+								<code>{code}</code>
+							</pre>
+						</div>
+					</TabsContent>
+				</Tabs>
+			</TooltipProvider>
+
+			{/* 全屏弹窗 */}
+			{isModalOpen && typeof document !== "undefined" && (
+				<MermaidModal svgContent={svgContent} onClose={closeModal} />
 			)}
 		</>
 	);

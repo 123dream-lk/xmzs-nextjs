@@ -1,6 +1,6 @@
 // 请求响应参数（不包含data）
 export interface Result {
-  code: string;
+  code: string | number;
   msg: string;
 }
 
@@ -11,9 +11,15 @@ export interface ResultData<T = unknown> extends Result {
 
 // 定义列表项类型
 export type Item = {
-  cdId: string;
+  cdId: number;
   cdName: string;
   cdPath: string;
+  parentId?: number;
+  orderNum?: number;
+  isFrame?: string;
+  cdType?: string;
+  showType?: string | null;
+  children?: Item[] | null;
 };
 
 export type getMenuApiResponse = Array<Item>;

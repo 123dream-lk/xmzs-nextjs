@@ -6,11 +6,12 @@ import Image from "next/image";
 import { getMenuApi } from "@/lib/http/modules/portal-official-website";
 import { Item } from "@/lib/http/interface";
 import { Button as UIButton } from "@/components/ui/button";
-import Header from "@/components/website/header";
-import Footer from "@/components/website/footer";
+// import Header from "@/components/website/header";
+// import Footer from "@/components/website/footer";
 // import Loading from "./loading";
 import MotionDiv from "@/components/website/motion-div";
 import EmblaCarouselSwiper from "@/components/website/embla-carousel-swiper/embla-carousel-swiper";
+import BackToTop from "@/components/website/back-to-top/back-to-top";
 import { toast } from "sonner";
 import "./index.scss";
 import "./index.less";
@@ -23,8 +24,10 @@ const OPTIONS: EmblaOptionsType = {
 	align: "center",
 	dragFree: false,
 };
-const SLIDE_COUNT = 5;
-const SLIDES = Array.from(Array(SLIDE_COUNT).keys());
+const SLIDES = [
+	{ img: bg },
+	{ img: bg },
+];
 export default function Home() {
 	const context = useContext(GlobalContext);
 	const [list, setList] = useState<Item[]>([]);
@@ -49,8 +52,8 @@ export default function Home() {
 	}
 
 	return (
-		<div className="flex flex-col min-h-screen">
-			<Header />
+		<div className="flex flex-col min-h-[calc(100vh-128px)]">
+			{/* <Header /> */}
 			<div className="flex-1 h-0 p-6">
 				<Space wrap separator={<Divider vertical />}>
 					Space
@@ -146,7 +149,7 @@ export default function Home() {
 				<EmblaCarouselSwiper slides={SLIDES} options={OPTIONS} />
 				<div className="custom-less-color">less</div>
 				<div className="custom-color">自定义颜色</div>
-				<UIButton className="cursor-pointer" onClick={handleUIBtn}>
+				<UIButton onClick={handleUIBtn}>
 					Click me
 				</UIButton>
 				<Button onClick={handleBtn} type="primary">
@@ -160,8 +163,9 @@ export default function Home() {
 				<MotionDiv />
 				<div className="h-[2000px]"></div>
 			</div>
-			<Footer />
-			{/* <Loading /> */}
-		</div>
+		{/* <Footer /> */}
+		{/* <Loading /> */}
+		<BackToTop />
+	</div>
 	);
 }
