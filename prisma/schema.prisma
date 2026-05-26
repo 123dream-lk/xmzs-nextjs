@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client" //使用什么客户端
+  output   = "../src/generated/prisma" //生成客户端代码的目录
+}
+
+datasource db {
+  provider = "postgresql" //连接什么数据库
+}
+
+model User {
+  id        String   @id @default(cuid()) //主键 
+  name      String //用户名
+  email     String   @unique //邮箱
+  password  String //密码
+  createdAt DateTime @default(now()) //创建时间
+  updatedAt DateTime @updatedAt //更新时间
+  posts     Post[] //关联文章
+}
+
+model Post {
+  id        String   @id @default(cuid()) //主键
+  title     String //标题
+  content   String //内容
+  createdAt DateTime @default(now()) //创建时间
+  updatedAt DateTime @updatedAt //更新时间
+  authorId  String //作者ID
+  author    User     @relation(fields: [authorId], references: [id],onDelete: Cascade,onUpdate: Cascade) //一对多关联
+}

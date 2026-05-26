@@ -7,4 +7,37 @@
 #     "name": "lk"
 # }
 
-GET http://localhost:8888/api/user/123 HTTP/1.1
+# GET http://localhost:8888/api/user/123 HTTP/1.1
+
+### 创建用户
+POST http://localhost:8888/api
+Content-Type: application/json
+
+{
+    "name": "test",
+    "email": "1test@test.com",
+    "password": "123456"
+}
+
+### 查询所有用户
+GET http://localhost:8888/api
+
+
+### 更新用户
+PATCH http://localhost:8888/api
+Content-Type: application/json
+
+{
+    "id": "cmow9ish00000146u75r428fp",
+    "name": "梁柯",
+    "email": "1291801442@qq.com",
+    "password": "123456"
+}
+
+### 删除用户
+DELETE http://localhost:8888/api
+Content-Type: application/json
+
+{
+    "id": "cmkyoxflr00004ck82ywc6joi"
+}
